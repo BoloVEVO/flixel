@@ -13,7 +13,7 @@ import openfl.display.ShaderParameter;
 import openfl.display.TriangleCulling;
 import openfl.geom.ColorTransform;
 
-typedef DrawData<T> = openfl.Vector<T>;
+typedef DrawData<T> = #if (flash || openfl >= "4.0.0") openfl.Vector<T> #else Array<T> #end;
 
 /**
  * @author Zaphod
@@ -101,10 +101,10 @@ class FlxDrawTrianglesItem extends FlxDrawBaseItem<FlxDrawTrianglesItem>
 	override public function reset():Void
 	{
 		super.reset();
-		vertices.length = 0;
-		indices.length = 0;
-		uvtData.length = 0;
-		colors.length = 0;
+		vertices.splice(0, vertices.length);
+		indices.splice(0, indices.length);
+		uvtData.splice(0, uvtData.length);
+		colors.splice(0, colors.length);
 
 		verticesPosition = 0;
 		indicesPosition = 0;

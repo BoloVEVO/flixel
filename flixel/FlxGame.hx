@@ -40,6 +40,7 @@ import flixel.system.replay.FlxReplay;
  * after that `FlxG` and `FlxState` have all the useful stuff you actually need.
  */
 @:allow(flixel.FlxG)
+@:access(flixel.FlxG)
 class FlxGame extends Sprite
 {
 	/**
@@ -78,7 +79,7 @@ class FlxGame extends Sprite
 	/**
 	 * Time in milliseconds that has passed (amount of "ticks" passed) since the game has started.
 	 */
-	public var ticks(default, null):Int = 0;
+	public var ticks(default, null):Float = 0.0;
 
 	/**
 	 * Enables or disables the filters set via `setFilters()`.
@@ -104,13 +105,13 @@ class FlxGame extends Sprite
 	/**
 	 * Total number of milliseconds elapsed since game start.
 	 */
-	var _total:Int = 0;
+	var _total:Float = 0.0;
 
 	/**
 	 * Time stamp of game startup. Needed on JS where `Lib.getTimer()`
 	 * returns time stamp of current date, not the time passed since app start.
 	 */
-	var _startTime:Int = 0;
+	var _startTime:Float = 0.0;
 
 	/**
 	 * Total number of milliseconds elapsed since last update loop.
@@ -308,6 +309,84 @@ class FlxGame extends Sprite
 	/**
 	 * Used to instantiate the guts of the flixel game object once we have a valid reference to the root.
 	 */
+	function step():Void
+	{
+		// Handle game reset request
+		if (_resetGame)
+		{
+			resetGame();
+			_resetGame = false;
+		}
+
+		handleReplayRequests();
+
+		#if FLX_DEBUG
+		// Finally actually step through the game physics
+		FlxBasic.activeCount = 0;
+		#end
+
+		update();
+
+		#if FLX_DEBUG
+		debugger.stats.activeObjects(FlxBasic.activeCount);
+		#end
+	}
+
+	function update():Void
+	{
+		if (!_state.active || !_state.exists)
+			return;
+
+		if (_nextState != null)
+			switchState();
+
+		#if FLX_DEBUG
+		if (FlxG.debugger.visible)
+			ticks = getTicks();
+		#end
+
+		FlxG.elapsed = FlxG.timeScale * (_elapsedMS * 0.001); // variable timestep
+
+		var max = FlxG.maxElapsed * FlxG.timeScale;
+		if (FlxG.elapsed > max)
+			FlxG.elapsed = max;
+
+		FlxG.signals.preUpdate.dispatch();
+
+		updateInput();
+
+		#if FLX_POST_PROCESS
+		if (postProcesses[0] != null)
+			postProcesses[0].update(FlxG.elapsed);
+		#end
+
+		#if FLX_SOUND_SYSTEM
+		FlxG.sound.update(FlxG.elapsed);
+		#end
+		FlxG.plugins.update(FlxG.elapsed);
+
+		_state.tryUpdate(FlxG.elapsed);
+
+		FlxG.cameras.update(FlxG.elapsed);
+		FlxG.signals.postUpdate.dispatch();
+
+		#if FLX_DEBUG
+		debugger.stats.flixelUpdate(getTicks() - ticks);
+		#end
+
+		#if FLX_POINTER_INPUT
+		var len = FlxG.swipes.length;
+		while(len-- > 0)
+		{
+			final swipe = FlxG.swipes.pop();
+			if (swipe != null)
+				swipe.destroy();
+		}
+		#end
+
+		filters = filtersEnabled ? _filters : null;
+	}
+
 	function create(_):Void
 	{
 		if (stage == null)
@@ -543,21 +622,7 @@ class FlxGame extends Sprite
 				}
 			}
 
-			if (FlxG.fixedTimestep)
-			{
-				_accumulator += _elapsedMS;
-				_accumulator = (_accumulator > _maxAccumulation) ? _maxAccumulation : _accumulator;
-
-				while (_accumulator >= _stepMS)
-				{
-					step();
-					_accumulator -= _stepMS;
-				}
-			}
-			else
-			{
-				step();
-			}
+			step();
 
 			#if FLX_DEBUG
 			FlxBasic.visibleCount = 0;
@@ -655,35 +720,6 @@ class FlxGame extends Sprite
 		_gameJustStarted = false;
 	}
 
-	/**
-	 * This is the main game update logic section.
-	 * The `onEnterFrame()` handler is in charge of calling this
-	 * the appropriate number of times each frame.
-	 * This block handles state changes, replays, all that good stuff.
-	 */
-	function step():Void
-	{
-		// Handle game reset request
-		if (_resetGame)
-		{
-			resetGame();
-			_resetGame = false;
-		}
-
-		handleReplayRequests();
-
-		#if FLX_DEBUG
-		// Finally actually step through the game physics
-		FlxBasic.activeCount = 0;
-		#end
-
-		update();
-
-		#if FLX_DEBUG
-		debugger.stats.activeObjects(FlxBasic.activeCount);
-		#end
-	}
-
 	function handleReplayRequests():Void
 	{
 		#if FLX_RECORD
@@ -712,77 +748,6 @@ class FlxGame extends Sprite
 			replaying = true;
 		}
 		#end
-	}
-
-	/**
-	 * This function is called by `step()` and updates the actual game state.
-	 * May be called multiple times per "frame" or draw call.
-	 */
-	function update():Void
-	{
-		if (!_state.active || !_state.exists)
-			return;
-
-		if (_nextState != null)
-			switchState();
-
-		#if FLX_DEBUG
-		if (FlxG.debugger.visible)
-			ticks = getTicks();
-		#end
-
-		updateElapsed();
-
-		FlxG.signals.preUpdate.dispatch();
-
-		updateInput();
-
-		#if FLX_POST_PROCESS
-		if (postProcesses[0] != null)
-			postProcesses[0].update(FlxG.elapsed);
-		#end
-
-		#if FLX_SOUND_SYSTEM
-		FlxG.sound.update(FlxG.elapsed);
-		#end
-		FlxG.plugins.update(FlxG.elapsed);
-
-		_state.tryUpdate(FlxG.elapsed);
-
-		FlxG.cameras.update(FlxG.elapsed);
-		FlxG.signals.postUpdate.dispatch();
-
-		#if FLX_DEBUG
-		debugger.stats.flixelUpdate(getTicks() - ticks);
-		#end
-
-		#if FLX_POINTER_INPUT
-		var len = FlxG.swipes.length;
-		while(len-- > 0)
-		{
-			final swipe = FlxG.swipes.pop();
-			if (swipe != null)
-				swipe.destroy();
-		}
-		#end
-
-		filters = filtersEnabled ? _filters : null;
-	}
-
-	function updateElapsed():Void
-	{
-		if (FlxG.fixedTimestep)
-		{
-			FlxG.elapsed = FlxG.timeScale * _stepSeconds; // fixed timestep
-		}
-		else
-		{
-			FlxG.elapsed = FlxG.timeScale * (_elapsedMS / 1000); // variable timestep
-
-			var max = FlxG.maxElapsed * FlxG.timeScale;
-			if (FlxG.elapsed > max)
-				FlxG.elapsed = max;
-		}
 	}
 
 	function updateInput():Void
@@ -899,12 +864,12 @@ class FlxGame extends Sprite
 		#end
 	}
 
-	inline function getTicks()
+	inline function getTicks():Float
 	{
 		return getTimer() - _startTime;
 	}
 
-	dynamic function getTimer():Int
+	dynamic function getTimer():Float
 	{
 		// expensive, only call if necessary
 		return Lib.getTimer();

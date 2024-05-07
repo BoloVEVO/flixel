@@ -30,7 +30,7 @@ class FlxMouseEventManager extends FlxBasic
 	var _downList:Array<FlxMouseEvent<FlxObject>> = [];
 	var _clickList:Array<FlxMouseEvent<FlxObject>> = [];
 
-	var mouseClickedTime:Int = -1;
+	var mouseClickedTime:Float = -1;
 
 	@:noCompletion
 	var _point:FlxPoint = FlxPoint.get();
@@ -271,7 +271,7 @@ class FlxMouseEventManager extends FlxBasic
 	 *                          Must have Object as argument - e.g. `onMouseDown(object:FlxObject)`.
 	 * @param   onMouseUp       Callback when mouse is released over this object.
 	 *                          Must have Object as argument - e.g. `onMouseDown(object:FlxObject)`.
-	 * @param   onMouseOver     Callback when mouse is over this object.
+	 * @param   onMouseOver     Callback when mouse is this object.
 	 *                          Must have Object as argument - e.g. `onMouseDown(object:FlxObject)`.
 	 * @param   onMouseOut      Callback when mouse moves out of this object.
 	 *                          Must have Object as argument - e.g. `onMouseDown(object:FlxObject)`.

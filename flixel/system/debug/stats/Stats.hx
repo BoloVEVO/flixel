@@ -49,9 +49,9 @@ class Stats extends Window
 	var _leftTextField:TextField;
 	var _rightTextField:TextField;
 
-	var _itvTime:Int = 0;
-	var _frameCount:Int;
-	var _currentTime:Int;
+	var _itvTime:Float = 0;
+	var _frameCount:Float;
+	var _currentTime:Float;
 
 	var fpsGraph:StatsGraph;
 	var memoryGraph:StatsGraph;
@@ -59,28 +59,28 @@ class Stats extends Window
 	var updateTimeGraph:StatsGraph;
 
 	var flashPlayerFramerate:Float = 0;
-	var visibleCount:Int = 0;
-	var activeCount:Int = 0;
-	var updateTime:Int = 0;
-	var drawTime:Int = 0;
+	var visibleCount:Float = 0;
+	var activeCount:Float = 0;
+	var updateTime:Float = 0;
+	var drawTime:Float = 0;
 	var drawCallsCount:Int = 0;
 
-	var _lastTime:Int = 0;
-	var _updateTimer:Int = 0;
+	var _lastTime:Float = 0;
+	var _updateTimer:Float = 0;
 
-	var _update:Array<Int> = [];
+	var _update:Array<Float> = [];
 	var _updateMarker:Int = 0;
 
-	var _draw:Array<Int> = [];
+	var _draw:Array<Float> = [];
 	var _drawMarker:Int = 0;
 
 	var _drawCalls:Array<Int> = [];
 	var _drawCallsMarker:Int = 0;
 
-	var _visibleObject:Array<Int> = [];
+	var _visibleObject:Array<Float> = [];
 	var _visibleObjectMarker:Int = 0;
 
-	var _activeObject:Array<Int> = [];
+	var _activeObject:Array<Float> = [];
 	var _activeObjectMarker:Int = 0;
 
 	var _paused:Bool = true;
@@ -226,14 +226,10 @@ class Stats extends Window
 		{
 			return;
 		}
-		var time:Int = _currentTime = FlxG.game.ticks;
 
-		var elapsed:Int = time - _lastTime;
+		var time:Float = _currentTime = FlxG.game.ticks;
+		var elapsed:Float = Math.max(time - _lastTime, UPDATE_DELAY);
 
-		if (elapsed > UPDATE_DELAY)
-		{
-			elapsed = UPDATE_DELAY;
-		}
 		_lastTime = time;
 
 		_updateTimer += elapsed;
@@ -259,7 +255,7 @@ class Stats extends Window
 			{
 				activeCount += _activeObject[i];
 			}
-			activeCount = Std.int(divide(activeCount, _activeObjectMarker));
+			activeCount = divide(activeCount, _activeObjectMarker);
 
 			drawTime = 0;
 			for (i in 0..._drawMarker)
@@ -271,7 +267,7 @@ class Stats extends Window
 			{
 				visibleCount += _visibleObject[i];
 			}
-			visibleCount = Std.int(divide(visibleCount, _visibleObjectMarker));
+			visibleCount = divide(visibleCount, _visibleObjectMarker);
 
 			if (FlxG.renderTile)
 			{
@@ -325,7 +321,7 @@ class Stats extends Window
 	 */
 	public inline function intervalTime():Float
 	{
-		return (_currentTime - _itvTime) / 1000;
+		return (_currentTime - _itvTime) * 0.001;
 	}
 
 	/**
@@ -333,7 +329,7 @@ class Stats extends Window
 	 */
 	public inline function currentMem():Float
 	{
-		return (System.totalMemory / 1024) / 1000;
+		return (System.totalMemory / 1024) * 0.001;
 	}
 
 	/**
@@ -341,7 +337,7 @@ class Stats extends Window
 	 *
 	 * @param 	Time	How long this update took.
 	 */
-	public function flixelUpdate(Time:Int):Void
+	public function flixelUpdate(Time:Float):Void
 	{
 		if (_paused)
 			return;
@@ -353,7 +349,7 @@ class Stats extends Window
 	 *
 	 * @param	Time	How long this render took.
 	 */
-	public function flixelDraw(Time:Int):Void
+	public function flixelDraw(Time:Float):Void
 	{
 		if (_paused)
 			return;
