@@ -374,18 +374,31 @@ class FlxGraphic implements IFlxDestroyable
 	 */
 	@:deprecated("_imageFrame is deprecated, use imageFrame")
 	var _imageFrame(get, set):FlxImageFrame;
-	inline function get__imageFrame() return imageFrame;
-	inline function set__imageFrame(value:FlxImageFrame) return imageFrame = value;
+
+	inline function get__imageFrame()
+		return imageFrame;
+
+	inline function set__imageFrame(value:FlxImageFrame)
+		return imageFrame = value;
 
 	@:deprecated('_useCount is deprecated, use incrementUseCount and decrementUseCount')
 	var _useCount(get, set):Int;
-	inline function get__useCount() return useCount;
-	inline function set__useCount(value:Int) return useCount = value;
+
+	inline function get__useCount()
+		return useCount;
+
+	inline function set__useCount(value:Int)
+		return useCount = value;
 
 	@:deprecated('_destroyOnNoUse is deprecated, use destroyOnNoUse')
 	var _destroyOnNoUse(get, set):Bool;
-	inline function get__destroyOnNoUse() return destroyOnNoUse;
-	inline function set__destroyOnNoUse(value:Bool) return destroyOnNoUse = value;
+
+	inline function get__destroyOnNoUse()
+		return destroyOnNoUse;
+
+	inline function set__destroyOnNoUse(value:Bool)
+		return destroyOnNoUse = value;
+
 	/**
 	 * `FlxGraphic` constructor
 	 *
@@ -478,10 +491,9 @@ class FlxGraphic implements IFlxDestroyable
 		if (frameCollections == null) // no need to destroy frame collections if it's already null
 			return;
 
-		var collections:Array<FlxFramesCollection>;
-		for (collectionType in frameCollectionTypes)
+		for (dynCollections in frameCollections)
 		{
-			collections = cast frameCollections.get(collectionType);
+			var collections:Array<FlxFramesCollection> = cast dynCollections;
 			FlxDestroyUtil.destroyArray(collections);
 		}
 
@@ -556,12 +568,12 @@ class FlxGraphic implements IFlxDestroyable
 
 		return null;
 	}
-	
+
 	inline function get_isLoaded()
 	{
 		return bitmap != null && !bitmap.rect.isEmpty();
 	}
-	
+
 	inline function get_isDestroyed()
 	{
 		return shader == null;
@@ -571,19 +583,19 @@ class FlxGraphic implements IFlxDestroyable
 	{
 		return assetsClass != null || assetsKey != null;
 	}
-	
+
 	public function incrementUseCount()
 	{
 		useCount++;
 	}
-	
+
 	public function decrementUseCount()
 	{
 		useCount--;
-		
+
 		checkUseCount();
 	}
-	
+
 	function checkUseCount()
 	{
 		if (useCount <= 0 && destroyOnNoUse && !persist)
@@ -593,9 +605,9 @@ class FlxGraphic implements IFlxDestroyable
 	function set_destroyOnNoUse(value:Bool):Bool
 	{
 		this.destroyOnNoUse = value;
-		
+
 		checkUseCount();
-		
+
 		return value;
 	}
 
