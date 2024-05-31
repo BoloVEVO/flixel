@@ -345,11 +345,7 @@ class FlxGame extends Sprite
 			ticks = getTicks();
 		#end
 
-		FlxG.elapsed = FlxG.timeScale * (_elapsedMS * 0.001); // variable timestep
-
-		var max = FlxG.maxElapsed * FlxG.timeScale;
-		if (FlxG.elapsed > max)
-			FlxG.elapsed = max;
+		updateElapsed();
 
 		FlxG.signals.preUpdate.dispatch();
 
@@ -385,6 +381,24 @@ class FlxGame extends Sprite
 		#end
 
 		filters = filtersEnabled ? _filters : null;
+
+		_shouldDraw = true;
+	}
+
+	function updateElapsed():Void
+	{
+		if (FlxG.fixedTimestep)
+		{
+			FlxG.elapsed = FlxG.timeScale * _stepSeconds; // fixed timestep
+		}
+		else
+		{
+			FlxG.elapsed = FlxG.timeScale * (_elapsedMS * 0.001); // variable timestep
+
+			var max = FlxG.maxElapsed * FlxG.timeScale;
+			if (FlxG.elapsed > max)
+				FlxG.elapsed = max;
+		}
 	}
 
 	function create(_):Void
@@ -622,13 +636,34 @@ class FlxGame extends Sprite
 				}
 			}
 
-			step();
+
+
+			if (FlxG.fixedTimestep)
+			{
+				_accumulator += _elapsedMS;
+				_accumulator = (_accumulator > _maxAccumulation) ? _maxAccumulation : _accumulator;
+
+				while (_accumulator >= _stepMS)
+				{
+					step();
+					_accumulator -= _stepMS;
+				}
+			}
+			else
+			{
+				step();
+			}
+
 
 			#if FLX_DEBUG
 			FlxBasic.visibleCount = 0;
 			#end
 
-			draw();
+			if (_shouldDraw)
+			{
+				draw();
+				_shouldDraw = false;
+			}
 
 			#if FLX_DEBUG
 			debugger.stats.visibleObjects(FlxBasic.visibleCount);
@@ -636,6 +671,8 @@ class FlxGame extends Sprite
 			#end
 		}
 	}
+
+	var _shouldDraw:Bool = false;
 
 	/**
 	 * Internal method to create a new instance of `_initialState` and reset the game.
