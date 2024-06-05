@@ -381,8 +381,6 @@ class FlxGame extends Sprite
 		#end
 
 		filters = filtersEnabled ? _filters : null;
-
-		_shouldDraw = true;
 	}
 
 	function updateElapsed():Void
@@ -659,11 +657,7 @@ class FlxGame extends Sprite
 			FlxBasic.visibleCount = 0;
 			#end
 
-			if (_shouldDraw)
-			{
-				draw();
-				_shouldDraw = false;
-			}
+			draw();
 
 			#if FLX_DEBUG
 			debugger.stats.visibleObjects(FlxBasic.visibleCount);
@@ -671,8 +665,6 @@ class FlxGame extends Sprite
 			#end
 		}
 	}
-
-	var _shouldDraw:Bool = false;
 
 	/**
 	 * Internal method to create a new instance of `_initialState` and reset the game.
