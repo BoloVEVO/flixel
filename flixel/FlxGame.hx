@@ -596,6 +596,8 @@ class FlxGame extends Sprite
 		#end
 	}
 
+	var lastElapsed:Float;
+
 	/**
 	 * Handles the `onEnterFrame` call and figures out how many updates and draw calls to do.
 	 */
@@ -657,8 +659,16 @@ class FlxGame extends Sprite
 			FlxBasic.visibleCount = 0;
 			#end
 
-			draw();
 
+			lastElapsed += _elapsedMS;
+			lastElapsed = lastElapsed > _stepMS ? _stepMS : lastElapsed;
+			while (lastElapsed >= _stepMS)
+			{
+				lastElapsed -= _stepMS;
+			}
+							
+			draw();
+			
 			#if FLX_DEBUG
 			debugger.stats.visibleObjects(FlxBasic.visibleCount);
 			debugger.update();
