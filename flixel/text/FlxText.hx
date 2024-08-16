@@ -892,7 +892,11 @@ class FlxText extends FlxSprite
 			// Need to generate a new buffer to store the text graphic
 			var key:String = FlxG.bitmap.getUniqueKey("text");
 			makeGraphic(newWidth, newHeight, FlxColor.TRANSPARENT, false, key);
-
+			
+			#if FLX_TRACK_GRAPHICS
+			graphic.trackingInfo = 'text($ID, $text)';
+			#end
+			
 			if (_hasBorderAlpha)
 				_borderPixels = graphic.bitmap.clone();
 
@@ -1269,6 +1273,10 @@ enum abstract FlxTextAlign(String) from String
 	{
 		return switch (align)
 		{
+			// This `null` check is needed for HashLink, otherwise it will cast
+			// a `null` alignment to 0 which results in returning `CENTER`
+			// instead of the default `LEFT`.
+			case null: LEFT;
 			case TextFormatAlign.LEFT: LEFT;
 			case TextFormatAlign.CENTER: CENTER;
 			case TextFormatAlign.RIGHT: RIGHT;

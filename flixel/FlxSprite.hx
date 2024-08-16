@@ -570,6 +570,10 @@ class FlxSprite extends FlxObject
 			tempGraph = FlxGraphic.fromBitmapData(bitmap, false, key);
 		}
 		
+		#if FLX_TRACK_GRAPHICS
+		tempGraph.trackingInfo = 'loadRotatedGraphic($ID, $Rotations, $Frame, $AntiAliasing, $AutoBuffer)';
+		#end
+		
 		var max:Int = (brush.height > brush.width) ? brush.height : brush.width;
 		max = AutoBuffer ? Std.int(max * 1.5) : max;
 		
@@ -598,19 +602,23 @@ class FlxSprite extends FlxObject
 	 *                         Will create frames that are 150% larger on each axis than the original frame or graphic.
 	 * @return  this FlxSprite with loaded rotated graphic in it.
 	 */
-	public function loadRotatedFrame(Frame:FlxFrame, Rotations:Int = 16, AntiAliasing:Bool = false, AutoBuffer:Bool = false):FlxSprite
+	public function loadRotatedFrame(frame:FlxFrame, rotations = 16, antiAliasing = false, autoBuffer = false):FlxSprite
 	{
-		var key:String = Frame.parent.key;
-		if (Frame.name != null)
-			key += ":" + Frame.name;
+		var key:String = frame.parent.key;
+		if (frame.name != null)
+			key += ":" + frame.name;
 		else
-			key += ":" + Frame.frame.toString();
-			
+			key += ":" + frame.frame.toString();
+		
 		var graphic:FlxGraphic = FlxG.bitmap.get(key);
 		if (graphic == null)
-			graphic = FlxGraphic.fromBitmapData(Frame.paint(), false, key);
-			
-		return loadRotatedGraphic(graphic, Rotations, -1, AntiAliasing, AutoBuffer);
+			graphic = FlxGraphic.fromBitmapData(frame.paint(), false, key);
+		
+		#if FLX_TRACK_GRAPHICS
+		graphic.trackingInfo = 'loadRotatedFrame($ID, $rotations, $antiAliasing, $autoBuffer)';
+		#end
+		
+		return loadRotatedGraphic(graphic, rotations, -1, antiAliasing, autoBuffer);
 	}
 	
 	/**
@@ -635,10 +643,15 @@ class FlxSprite extends FlxObject
 	 *                   it is used as a prefix to find a new unique name like `"Key3"`.
 	 * @return  This `FlxSprite` instance (nice for chaining stuff together, if you're into that).
 	 */
-	public function makeGraphic(Width:Int, Height:Int, Color:FlxColor = FlxColor.WHITE, Unique:Bool = false, ?Key:String):FlxSprite
+	public function makeGraphic(width:Int, height:Int, color = FlxColor.WHITE, unique = false, ?key:String):FlxSprite
 	{
-		var graph:FlxGraphic = FlxG.bitmap.create(Width, Height, Color, Unique, Key);
+		var graph:FlxGraphic = FlxG.bitmap.create(width, height, color, unique, key);
 		frames = graph.imageFrame;
+		
+		#if FLX_TRACK_GRAPHICS
+		graph.trackingInfo = 'makeGraphic($ID, ${color.toHexString()})';
+		#end
+		
 		return this;
 	}
 	
@@ -1210,15 +1223,42 @@ class FlxSprite extends FlxObject
 	/**
 	 * Retrieve the midpoint of this sprite's graphic in world coordinates.
 	 *
-	 * @param   point   Allows you to pass in an existing `FlxPoint` if you're so inclined.
-	 *                  Otherwise a new one is created.
-	 * @return  A `FlxPoint` containing the midpoint of this sprite's graphic in world coordinates.
+	 * @param   point  The resulting point, if `null` a new one is created
 	 */
 	public function getGraphicMidpoint(?point:FlxPoint):FlxPoint
 	{
-		if (point == null)
-			point = FlxPoint.get();
-		return point.set(x + frameWidth * 0.5 * scale.x, y + frameHeight * 0.5 * scale.y);
+		final rect = getGraphicBounds();
+		point = rect.getMidpoint(point);
+		rect.put();
+		return point;
+	}
+	
+	/**
+	 * Retrieves the world bounds of this sprite's graphic
+	 * **Note:** Ignores `scrollFactor`, to get the screen position of the graphic use
+	 * `getScreenBounds`
+	 *
+	 * @param   rect  The resulting rect, if `null` a new one is created
+	 * @since 5.9.0
+	 */
+	public function getGraphicBounds(?rect:FlxRect):FlxRect
+	{
+		if (rect == null)
+			rect = FlxRect.get();
+		
+		rect.set(x, y);
+		if (pixelPerfectPosition)
+			rect.floor();
+		
+		_scaledOrigin.set(origin.x * scale.x, origin.y * scale.y);
+		rect.x += origin.x - offset.x - _scaledOrigin.x;
+		rect.y += origin.y - offset.y - _scaledOrigin.y;
+		rect.setSize(frameWidth * scale.x, frameHeight * scale.y);
+		
+		if (angle % 360 != 0)
+			rect.getRotatedBounds(angle, _scaledOrigin, rect);
+		
+		return rect;
 	}
 	
 	/**
