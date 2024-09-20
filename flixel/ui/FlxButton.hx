@@ -472,7 +472,7 @@ class FlxTypedButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 	function checkInput(pointer:FlxPointer, input:IFlxInput, justPressedPosition:FlxPoint, camera:FlxCamera):Bool
 	{
 		if (maxInputMovement != Math.POSITIVE_INFINITY
-			&& justPressedPosition.distanceTo(pointer.getScreenPosition(FlxPoint.weak())) > maxInputMovement
+			&& justPressedPosition.distanceTo(pointer.getViewPosition(FlxPoint.weak())) > maxInputMovement
 			&& input == currentInput)
 		{
 			currentInput = null;
@@ -615,6 +615,7 @@ class FlxTypedButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 	{
 		status = value;
 		updateLabelAlpha();
+		updateLabelPosition();
 		return status;
 	}
 
@@ -666,7 +667,7 @@ class FlxTypedButton<T:FlxSprite> extends FlxSprite implements IFlxInput
 private class FlxButtonEvent implements IFlxDestroyable
 {
 	/**
-	 * The callback function to call when this even fires.
+	 * The callback function to call when this event fires.
 	 */
 	public var callback:Void->Void;
 
@@ -678,7 +679,7 @@ private class FlxButtonEvent implements IFlxDestroyable
 	#end
 
 	/**
-	 * @param   Callback   The callback function to call when this even fires.
+	 * @param   Callback   The callback function to call when this event fires.
 	 * @param   sound      The sound to play when this event fires.
 	 */
 	public function new(?Callback:Void->Void, ?sound:FlxSound)
