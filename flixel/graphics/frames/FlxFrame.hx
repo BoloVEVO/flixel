@@ -1,8 +1,5 @@
 package flixel.graphics.frames;
 
-import openfl.display.BitmapData;
-import openfl.geom.Point;
-import openfl.geom.Rectangle;
 import flixel.graphics.FlxGraphic;
 import flixel.math.FlxMath;
 import flixel.math.FlxMatrix;
@@ -13,6 +10,9 @@ import flixel.util.FlxDestroyUtil;
 import flixel.util.FlxStringUtil;
 import haxe.ds.ArraySort;
 import haxe.ds.Vector;
+import openfl.display.BitmapData;
+import openfl.geom.Point;
+import openfl.geom.Rectangle;
 
 /**
  * Base class for all frame types
@@ -105,10 +105,8 @@ class FlxFrame implements IFlxDestroyable
 
 	/**
 	 * UV coordinates for this frame.
-	 * WARNING: For optimization purposes, width and height of this rect
-	 * contain right and bottom coordinates (`x + width` and `y + height`).
 	 */
-	public var uv:FlxRect;
+	public var uv:FlxUVRect;
 
 	public var parent:FlxGraphic;
 
@@ -578,83 +576,79 @@ class FlxFrame implements IFlxDestroyable
 	 *                         If `null`, a new frame will be created.
 	 * @return  Result of applying frame clipping
 	 */
-	public function clipTo(clip:FlxRect, ?clippedFrame:FlxFrame):FlxFrame
+	public function clipTo(rect:FlxRect, ?clippedFrame:FlxFrame):FlxFrame
 	{
 		if (clippedFrame == null)
-		{
 			clippedFrame = new FlxFrame(parent, angle);
-		}
-		else
-		{
-			clippedFrame.parent = parent;
-			clippedFrame.angle = angle;
-			clippedFrame.frame = FlxDestroyUtil.put(clippedFrame.frame);
-		}
 
-		clippedFrame.sourceSize.copyFrom(sourceSize);
-		clippedFrame.name = name;
+		copyTo(clippedFrame);
+		return clippedFrame.clip(rect);
+	}
 
+	/**
+	 * Clips this frame to the desired rect
+	 *
+	 * @param   rect  Clipping rectangle to apply
+	 */
+	public function clip(rect:FlxRect)
+	{
 		// no need to make all calculations if original frame is empty...
 		if (type == FlxFrameType.EMPTY)
-		{
-			clippedFrame.type = FlxFrameType.EMPTY;
-			clippedFrame.offset.set(0, 0);
-			return clippedFrame;
-		}
-
-		final clippedRect:FlxRect = FlxRect.get(0, 0).setSize(frame.width, frame.height);
+			return this;
+		
+		final clippedRect = FlxRect.get(0, 0, frame.width, frame.height);
 		if (angle != FlxFrameAngle.ANGLE_0)
 		{
 			clippedRect.width = frame.height;
 			clippedRect.height = frame.width;
 		}
-
-		clip.offset(-offset.x, -offset.y);
-		var frameRect:FlxRect = clippedRect.intersection(clip);
+		
+		rect.offset(-offset.x, -offset.y);
+		final frameRect:FlxRect = clippedRect.intersection(rect);
+		rect.offset(offset.x, offset.y);
 		clippedRect.put();
-
+		
 		if (frameRect.isEmpty)
 		{
-			clippedFrame.type = FlxFrameType.EMPTY;
-			frameRect.set(0, 0, 0, 0);
-			clippedFrame.frame = frameRect;
-			clippedFrame.offset.set(0, 0);
+			type = FlxFrameType.EMPTY;
+			frame.set(0, 0, 0, 0);
+			offset.set(0, 0);
 		}
 		else
 		{
-			clippedFrame.type = FlxFrameType.REGULAR;
-			clippedFrame.offset.set(frameRect.x, frameRect.y).add(offset);
-
-			var p1 = FlxPoint.weak(frameRect.x, frameRect.y);
-			var p2 = FlxPoint.weak(frameRect.right, frameRect.bottom);
-
-			_matrix.identity();
-
-			if (angle == FlxFrameAngle.ANGLE_NEG_90)
-			{
-				_matrix.rotateByPositive90();
-				_matrix.translate(frame.width, 0);
-			}
-			else if (angle == FlxFrameAngle.ANGLE_90)
-			{
-				_matrix.rotateByNegative90();
-				_matrix.translate(0, frame.height);
-			}
-
+			type = FlxFrameType.REGULAR;
+			offset.add(frameRect.x, frameRect.y);
+			
 			if (angle != FlxFrameAngle.ANGLE_0)
 			{
+				final p1 = FlxPoint.weak(frameRect.x, frameRect.y);
+				final p2 = FlxPoint.weak(frameRect.right, frameRect.bottom);
+				
+				_matrix.identity();
+				
+				if (angle == FlxFrameAngle.ANGLE_NEG_90)
+				{
+					_matrix.rotateByPositive90();
+					_matrix.translate(frame.width, 0);
+				}
+				else if (angle == FlxFrameAngle.ANGLE_90)
+				{
+					_matrix.rotateByNegative90();
+					_matrix.translate(0, frame.height);
+				}
+				
 				p1.transform(_matrix);
 				p2.transform(_matrix);
+				frameRect.fromTwoPoints(p1, p2);
 			}
-
-			frameRect.fromTwoPoints(p1, p2);
+			
 			frameRect.offset(frame.x, frame.y);
-			clippedFrame.frame = frameRect;
-			clippedFrame.cacheFrameMatrix();
+			frame.copyFrom(frameRect);
+			cacheFrameMatrix();
 		}
-
-		clip.offset(offset.x, offset.y);
-		return clippedFrame;
+		
+		frameRect.put();
+		return this;
 	}
 
 	/**
@@ -683,6 +677,7 @@ class FlxFrame implements IFlxDestroyable
 		clone.frame = FlxRect.get().copyFrom(frame);
 		clone.type = type;
 		clone.name = name;
+		clone.duration = duration;
 		clone.cacheFrameMatrix();
 		return clone;
 	}
@@ -709,7 +704,7 @@ class FlxFrame implements IFlxDestroyable
 		if (value != null)
 		{
 			if (uv == null)
-				uv = FlxRect.get();
+				uv = FlxUVRect.get();
 
 			uv.set(value.x / parent.width, value.y / parent.height, value.right / parent.width, value.bottom / parent.height);
 		}
@@ -735,4 +730,51 @@ enum abstract FlxFrameAngle(Int) from Int to Int
 	var ANGLE_90 = 90;
 	var ANGLE_NEG_90 = -90;
 	var ANGLE_270 = -90;
+}
+
+/**
+ * FlxRect, but instead of `x`, `y`, `width` and `height`, it takes a `left`, `right`, `top` and
+ * `bottom`. This is for optimization reasons, to reduce arithmetic when drawing vertices
+ */
+@:forward(put)
+abstract FlxUVRect(FlxRect) from FlxRect to flixel.util.FlxPool.IFlxPooled
+{
+	public var left(get, set):Float;
+	inline function get_left():Float { return this.x; }
+	inline function set_left(value):Float { return this.x = value; }
+	
+	/** Top */
+	public var right(get, set):Float;
+	inline function get_right():Float { return this.y; }
+	inline function set_right(value):Float { return this.y = value; }
+	
+	/** Right */
+	public var top(get, set):Float;
+	inline function get_top():Float { return this.width; }
+	inline function set_top(value):Float { return this.width = value; }
+	
+	/** Bottom */
+	public var bottom(get, set):Float;
+	inline function get_bottom():Float { return this.height; }
+	inline function set_bottom(value):Float { return this.height = value; }
+	
+	public inline function set(l, t, r, b)
+	{
+		this.set(l, t, r, b);
+	}
+	
+	public inline function copyTo(uv:FlxUVRect)
+	{
+		uv.set(left, top, right, bottom);
+	}
+	
+	public inline function copyFrom(uv:FlxUVRect)
+	{
+		set(uv.left, uv.top, uv.right, uv.bottom);
+	}
+	
+	public static function get(l = 0.0, t = 0.0, r = 0.0, b = 0.0)
+	{
+		return FlxRect.get(l, t, r, b);
+	}
 }

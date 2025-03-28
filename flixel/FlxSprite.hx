@@ -272,12 +272,11 @@ class FlxSprite extends FlxObject
 	
 	/**
 	 * Clipping rectangle for this sprite.
-	 * Changing the rect's properties directly doesn't have any effect,
-	 * reassign the property to update it (`sprite.clipRect = sprite.clipRect;`).
 	 * Set to `null` to discard graphic frame clipping.
 	 */
 	public var clipRect(default, set):FlxRect;
-	
+	var _lastClipRect = FlxRect.get(Math.NaN);
+
 	/**
 	 * GLSL shader for this sprite. Avoid changing it frequently as this is a costly operation.
 	 * @since 4.1.0
@@ -420,7 +419,8 @@ class FlxSprite extends FlxObject
 		scale = FlxDestroyUtil.put(scale);
 		_halfSize = FlxDestroyUtil.put(_halfSize);
 		_scaledOrigin = FlxDestroyUtil.put(_scaledOrigin);
-		
+		_lastClipRect = FlxDestroyUtil.put(_lastClipRect);
+
 		framePixels = FlxDestroyUtil.dispose(framePixels);
 		
 		_flashPoint = null;
@@ -571,7 +571,7 @@ class FlxSprite extends FlxObject
 		}
 		
 		#if FLX_TRACK_GRAPHICS
-		tempGraph.trackingInfo = 'loadRotatedGraphic($ID, $Rotations, $Frame, $AntiAliasing, $AutoBuffer)';
+		tempGraph.trackingInfo = '$ID.loadRotatedGraphic(${brushGraphic.trackingInfo}, $Rotations, $Frame, $AntiAliasing, $AutoBuffer)';
 		#end
 		
 		var max:Int = (brush.height > brush.width) ? brush.height : brush.width;
@@ -615,7 +615,7 @@ class FlxSprite extends FlxObject
 			graphic = FlxGraphic.fromBitmapData(frame.paint(), false, key);
 		
 		#if FLX_TRACK_GRAPHICS
-		graphic.trackingInfo = 'loadRotatedFrame($ID, $rotations, $antiAliasing, $autoBuffer)';
+		graphic.trackingInfo = '$ID.loadRotatedFrame($key, $rotations, $antiAliasing, $autoBuffer)';
 		#end
 		
 		return loadRotatedGraphic(graphic, rotations, -1, antiAliasing, autoBuffer);
@@ -649,7 +649,7 @@ class FlxSprite extends FlxObject
 		frames = graph.imageFrame;
 		
 		#if FLX_TRACK_GRAPHICS
-		graph.trackingInfo = 'makeGraphic($ID, ${color.toHexString()})';
+		graph.trackingInfo = '$ID.makeGraphic($width, $height, ${color.toHexString()}, $unique, $key)';
 		#end
 		
 		return this;
@@ -801,24 +801,26 @@ class FlxSprite extends FlxObject
 	 */
 	override public function draw():Void
 	{
+		checkClipRect();
+		
 		checkEmptyFrame();
 		
 		if (alpha == 0 || _frame.type == FlxFrameType.EMPTY)
 			return;
-			
+		
 		if (dirty) // rarely
 			calcFrame(useFramePixels);
-			
+		
 		for (camera in getCamerasLegacy())
 		{
 			if (!camera.visible || !camera.exists || !isOnScreen(camera))
 				continue;
-				
+			
 			if (isSimpleRender(camera))
 				drawSimple(camera);
 			else
 				drawComplex(camera);
-				
+			
 			#if FLX_DEBUG
 			FlxBasic.visibleCount++;
 			#end
@@ -830,6 +832,25 @@ class FlxSprite extends FlxObject
 		#end
 	}
 	
+	/**
+	 * Checks the previous frame's clipRect compared to the current. If there's changes, apply them
+	 */
+	function checkClipRect()
+	{
+		if (frames == null
+		|| (clipRect == null && Math.isNaN(_lastClipRect.x))
+		|| (clipRect != null && clipRect.equals(_lastClipRect)))
+			return;
+		
+		// redraw frame
+		frame = frames.frames[animation.frameIndex];
+		
+		if (clipRect == null)
+			_lastClipRect.set(Math.NaN);
+		else
+			_lastClipRect.copyFrom(clipRect);
+	}
+
 	@:noCompletion
 	function drawSimple(camera:FlxCamera):Void
 	{
@@ -844,29 +865,35 @@ class FlxSprite extends FlxObject
 	@:noCompletion
 	function drawComplex(camera:FlxCamera):Void
 	{
-		_frame.prepareMatrix(_matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
-		_matrix.translate(-origin.x, -origin.y);
-		_matrix.scale(scale.x, scale.y);
+		drawFrameComplex(_frame, camera);
+	}
+	
+	function drawFrameComplex(frame:FlxFrame, camera:FlxCamera):Void
+	{
+		final matrix = this._matrix; // TODO: Just use local?
+		frame.prepareMatrix(matrix, FlxFrameAngle.ANGLE_0, checkFlipX(), checkFlipY());
+		matrix.translate(-origin.x, -origin.y);
+		matrix.scale(scale.x, scale.y);
 		
 		if (bakedRotationAngle <= 0)
 		{
 			updateTrig();
 			
 			if (angle != 0)
-				_matrix.rotateWithTrig(_cosAngle, _sinAngle);
+				matrix.rotateWithTrig(_cosAngle, _sinAngle);
 		}
-
+		
 		getScreenPosition(_point, camera).subtract(offset);
 		_point.add(origin.x, origin.y);
-		_matrix.translate(_point.x, _point.y);
+		matrix.translate(_point.x, _point.y);
 		
 		if (isPixelPerfectRender(camera))
 		{
-			_matrix.tx = Math.floor(_matrix.tx);
-			_matrix.ty = Math.floor(_matrix.ty);
+			matrix.tx = Math.floor(matrix.tx);
+			matrix.ty = Math.floor(matrix.ty);
 		}
 		
-		camera.drawPixels(_frame, framePixels, _matrix, colorTransform, blend, antialiasing, shader);
+		camera.drawPixels(frame, framePixels, matrix, colorTransform, blend, antialiasing, shader);
 	}
 	
 	/**
@@ -1456,14 +1483,9 @@ class FlxSprite extends FlxObject
 			_frameGraphic = FlxDestroyUtil.destroy(_frameGraphic);
 		}
 		
+		_frame = frame.copyTo(_frame);
 		if (clipRect != null)
-		{
-			_frame = frame.clipTo(clipRect, _frame);
-		}
-		else
-		{
-			_frame = frame.copyTo(_frame);
-		}
+			_frame.clip(clipRect);
 		
 		return frame;
 	}
@@ -1573,10 +1595,6 @@ class FlxSprite extends FlxObject
 		}
 		else
 			clipRect = null;
-			
-		if (frames != null)
-			frame = frames.frames[animation.frameIndex];
-			
 		return rect;
 	}
 	
