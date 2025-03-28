@@ -8,9 +8,15 @@ import flixel.math.FlxMath;
 import flixel.system.FlxLinkedList;
 import flixel.system.FlxQuadTree;
 import flixel.system.debug.DebuggerUtil;
+import flixel.system.debug.FlxDebugger.GraphicStats;
 import flixel.system.ui.FlxSystemButton;
 import flixel.util.FlxColor;
 
+#if FLX_DEBUG @:bitmap("assets/images/debugger/buttons/minimize.png") #end
+private class GraphicMinimizeButton extends BitmapData {}
+
+#if FLX_DEBUG @:bitmap("assets/images/debugger/buttons/maximize.png") #end
+private class GraphicMaximizeButton extends BitmapData {}
 
 /**
  * A simple performance monitor widget, for use in the debugger overlay.
@@ -44,7 +50,7 @@ class Stats extends Window
 	var _rightTextField:TextField;
 
 	var _itvTime:Float = 0;
-	var _frameCount:Float;
+	var _frameCount:Int;
 	var _currentTime:Float;
 
 	var fpsGraph:StatsGraph;
@@ -53,8 +59,8 @@ class Stats extends Window
 	var updateTimeGraph:StatsGraph;
 
 	var flashPlayerFramerate:Float = 0;
-	var visibleCount:Float = 0;
-	var activeCount:Float = 0;
+	var visibleCount:Int = 0;
+	var activeCount:Int = 0;
 	var updateTime:Float = 0;
 	var drawTime:Float = 0;
 	var drawCallsCount:Int = 0;
@@ -71,10 +77,10 @@ class Stats extends Window
 	var _drawCalls:Array<Int> = [];
 	var _drawCallsMarker:Int = 0;
 
-	var _visibleObject:Array<Float> = [];
+	var _visibleObject:Array<Int> = [];
 	var _visibleObjectMarker:Int = 0;
 
-	var _activeObject:Array<Float> = [];
+	var _activeObject:Array<Int> = [];
 	var _activeObjectMarker:Int = 0;
 
 	var _paused:Bool = true;
@@ -86,7 +92,7 @@ class Stats extends Window
 	 */
 	public function new()
 	{
-		super("Stats", Icon.stats, 0, 0, false);
+		super("Stats", new GraphicStats(0, 0), 0, 0, false);
 
 		var minHeight = if (FlxG.renderTile) 200 else 185;
 		minSize.y = minHeight;
@@ -143,7 +149,7 @@ class Stats extends Window
 
 		_leftTextField.text = "Update: \nDraw:" + drawMethod + "\nQuadTrees: \nLists:";
 
-		_toggleSizeButton = new FlxSystemButton(Icon.maximize, toggleSize);
+		_toggleSizeButton = new FlxSystemButton(new GraphicMaximizeButton(0, 0), toggleSize);
 		_toggleSizeButton.alpha = Window.HEADER_ALPHA;
 		addChild(_toggleSizeButton);
 
@@ -220,10 +226,13 @@ class Stats extends Window
 		{
 			return;
 		}
-
 		var time:Float = _currentTime = FlxG.game.ticks;
-		var elapsed:Float = Math.max(time - _lastTime, UPDATE_DELAY);
+		var elapsed:Float = time - _lastTime;
 
+		if (elapsed > UPDATE_DELAY)
+		{
+			elapsed = UPDATE_DELAY;
+		}
 		_lastTime = time;
 
 		_updateTimer += elapsed;
@@ -249,7 +258,7 @@ class Stats extends Window
 			{
 				activeCount += _activeObject[i];
 			}
-			activeCount = divide(activeCount, _activeObjectMarker);
+			activeCount = Std.int(divide(activeCount, _activeObjectMarker));
 
 			drawTime = 0;
 			for (i in 0..._drawMarker)
@@ -261,7 +270,7 @@ class Stats extends Window
 			{
 				visibleCount += _visibleObject[i];
 			}
-			visibleCount = divide(visibleCount, _visibleObjectMarker);
+			visibleCount = Std.int(divide(visibleCount, _visibleObjectMarker));
 
 			if (FlxG.renderTile)
 			{
@@ -315,7 +324,7 @@ class Stats extends Window
 	 */
 	public inline function intervalTime():Float
 	{
-		return (_currentTime - _itvTime) * 0.001;
+		return (_currentTime - _itvTime) / 1000;
 	}
 
 	/**
@@ -410,7 +419,7 @@ class Stats extends Window
 			x -= INITIAL_WIDTH;
 			drawTimeGraph.visible = true;
 			updateTimeGraph.visible = true;
-			_toggleSizeButton.changeIcon(Icon.minimize);
+			_toggleSizeButton.changeIcon(new GraphicMinimizeButton(0, 0));
 		}
 		else
 		{
@@ -418,7 +427,7 @@ class Stats extends Window
 			x += INITIAL_WIDTH;
 			drawTimeGraph.visible = false;
 			updateTimeGraph.visible = false;
-			_toggleSizeButton.changeIcon(Icon.maximize);
+			_toggleSizeButton.changeIcon(new GraphicMaximizeButton(0, 0));
 		}
 
 		updateSize();
