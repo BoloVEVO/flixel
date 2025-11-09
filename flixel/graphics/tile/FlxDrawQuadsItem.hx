@@ -137,7 +137,7 @@ class FlxDrawQuadsItem extends FlxDrawBaseItem<FlxDrawQuadsItem>
 		camera.canvas.graphics.beginShaderFill(shader);
 		camera.canvas.graphics.drawQuads(rects, null, transforms);
 		camera.canvas.graphics.endFill();
-		super.render(camera);
+		FlxDrawBaseItem.drawCalls++;
 	}
 
 	inline function setParameterValue(parameter:ShaderParameter<Bool>, value:Bool):Void
