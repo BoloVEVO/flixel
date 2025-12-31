@@ -18,7 +18,7 @@ abstract LogStyle(FlxLogStyle) from FlxLogStyle to FlxLogStyle
 	{
 		@:bypassAccessor
 		FlxG.log.styles.normal = style;
-		return NORMAL = style;
+		return LogStyle.NORMAL = style;
 	}
 	
 	@:deprecated("LogStyle.WARNING is deprecated, use FlxG.log.styles.WARNING, instead")
@@ -27,7 +27,7 @@ abstract LogStyle(FlxLogStyle) from FlxLogStyle to FlxLogStyle
 	{
 		@:bypassAccessor
 		FlxG.log.styles.warning = style;
-		return WARNING = style;
+		return LogStyle.WARNING = style;
 	}
 	
 	@:deprecated("LogStyle.ERROR is deprecated, use FlxG.log.styles.ERROR, instead")
@@ -36,7 +36,7 @@ abstract LogStyle(FlxLogStyle) from FlxLogStyle to FlxLogStyle
 	{
 		@:bypassAccessor
 		FlxG.log.styles.error = style;
-		return ERROR = style;
+		return LogStyle.ERROR = style;
 	}
 	
 	@:deprecated("LogStyle.NOTICE is deprecated, use FlxG.log.styles.NOTICE, instead")
@@ -45,7 +45,7 @@ abstract LogStyle(FlxLogStyle) from FlxLogStyle to FlxLogStyle
 	{
 		@:bypassAccessor
 		FlxG.log.styles.notice = style;
-		return NOTICE = style;
+		return LogStyle.NOTICE = style;
 	}
 	
 	@:deprecated("LogStyle.CONSOLE is deprecated, use FlxG.log.styles.CONSOLE, instead")
@@ -54,7 +54,7 @@ abstract LogStyle(FlxLogStyle) from FlxLogStyle to FlxLogStyle
 	{
 		@:bypassAccessor
 		FlxG.log.styles.console = style;
-		return CONSOLE = style;
+		return LogStyle.CONSOLE = style;
 	}
 	
 	
